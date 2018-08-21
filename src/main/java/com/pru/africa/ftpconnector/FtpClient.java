@@ -1,4 +1,4 @@
-package ftpconnector;
+package com.pru.africa.ftpconnector;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -29,7 +29,7 @@ class FtpClient {
 			ftpClient.open();
 			ftpClient.listFiles("pub/example");
 			System.out.println("----------------------------------------");
-          //  ftpClient.downloadFTPFile("pub/example/readme.txt", "/");
+			ftpClient.downloadFTPFile("pub/example/readme.txt", "/");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -84,7 +84,7 @@ class FtpClient {
 		}*/
 	}
 
-	// list the files in a specified directory on the FTP
+	//list the files in a specified directory on the FTP
 	public boolean listFTPFiles(String directory, String fileName) throws IOException {
 		// lists files and directories in the current working directory
 		boolean verificationFilename = false;        
@@ -96,13 +96,13 @@ class FtpClient {
 			{
 				System.out.println("Correct Filename");
 				verificationFilename=details.equals(fileName);
-				//	assertTrue("Verification Failed: The filename is not updated at the CDN end.",details.equals(fileName));                
+				//assertTrue("Verification Failed: The filename is not updated at the CDN end.",details.equals(fileName));                
 			}
 		}  
 
 		return verificationFilename;
 	}
-	
+
 	Collection<String> listFiles(String path) throws IOException {
 		FTPFile[] files = ftp.listFiles(path);
 		ArrayList<String> filesList = new ArrayList<String>();
