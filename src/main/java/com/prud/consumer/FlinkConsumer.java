@@ -2,11 +2,16 @@ package com.prud.consumer;
 
 import java.util.Properties;
 
+import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.typeutils.TypeExtractor;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
+import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer010;
 
 import com.prud.constant.ConfigConstants;
@@ -41,25 +46,35 @@ public class FlinkConsumer
 		}, prop));
 
 
-		/*KeyedStream<String, String> keyedEdits = messageStream.keyBy(new KeySelector<String, String>() {
+	/*	KeyedStream<String, String> keyedEdits = messageStream.keyBy(new KeySelector<String, String>() {
 			@Override
 			public String getKey(String event) {
-				return event;
+				System.out.println("XX"+event.substring(2, 34)+"XX");
+				return event.substring(2, 34);
 			}
 		});
 
-		keyedEdits.window(TumblingEventTimeWindows.of(Time.seconds(5)))
-		.reduce(new ReduceFunction<String>(){
+		
+		//keyedEdits.window(TumblingEventTimeWindows.of(Time.seconds(5)))
+		DataStream<String> processedStream =keyedEdits.reduce(new ReduceFunction<String>(){
+			boolean firstRecord = true;
 			@Override
 			public String reduce(String output, String input) throws Exception {
-				output = input+"\n";
-				return output;
+				if(firstRecord){
+					firstRecord = !firstRecord;
+					return input.substring(34);
+				}
+				else{
+					System.out.println("record: "+input.substring(34));
+					return input.substring(34);	
+				}
+				
 			}
-		});*/
+		});
 
 
 
-		/*	DataStream<String> timestampStream = messageStream.rebalance().assignTimestampsAndWatermarks(timestampAndWatermarkAssigner)
+			DataStream<String> timestampStream = messageStream.rebalance().assignTimestampsAndWatermarks(timestampAndWatermarkAssigner)
 				.assignTimestampsAndWatermarks(5);
 		// Counts Strings
 		timestampStream.timeWindowAll(Time.minutes(1)).reduce(new ReduceFunction<String>() {
