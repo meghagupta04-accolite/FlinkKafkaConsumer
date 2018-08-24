@@ -1,29 +1,30 @@
 package com.prud.consumer;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Properties;
 
-import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
+import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.typeutils.TypeExtractor;
 import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.datastream.KeyedStream;
+import org.apache.flink.streaming.api.datastream.DataStreamUtils;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
-import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer010;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer011;
 
 import com.prud.constant.ConfigConstants;
+
 /**
  * Class to read records from Kafka consumer and put those records into a file.
  *
  */
-public class FlinkConsumer 
-{
-	public static void main( String[] args )
-	{
+public class FlinkConsumer {
+	public static void main(String[] args) {
 		try {
+			System.out.println("in kafka reader main");
 			kafkaReader();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -32,67 +33,59 @@ public class FlinkConsumer
 
 	public static void kafkaReader() throws Exception {
 		// create execution environment
+		System.out.println("kafka reader");
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 		env.setParallelism(1);
+		// env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
-		//set kafka and zookeeper properties
+		// set kafka and zookeeper properties
 		Properties prop = new Properties();
 		prop.setProperty(ConfigConstants.BOOTSTRAP_SERVER, ConfigConstants.BOOTSTRAP_SERVER_CONFIG);
 		prop.setProperty(ConfigConstants.ZOOKEEPER_CONNECT, ConfigConstants.ZOOKEEPER_CONFIG);
 		prop.setProperty(ConfigConstants.GROUP_ID, ConfigConstants.GROUPID_CONFIG);
 
-		//Add Source to env stream
-		DataStream<String> messageStream = env.addSource(new FlinkKafkaConsumer010<>(ConfigConstants.TOPIC__NAME, new SimpleStringSchema() {
-		}, prop));
+		FlinkKafkaConsumer010<String> flinkKafkaConsumer = new FlinkKafkaConsumer010<>(ConfigConstants.TOPIC_NAME,
+				new SimpleStringSchema(), prop);
 
+		// Add Source to env stream
+		DataStream<String> messageStream = env.addSource(flinkKafkaConsumer);
 
-	/*	KeyedStream<String, String> keyedEdits = messageStream.keyBy(new KeySelector<String, String>() {
+		System.out.println("messageStream " + messageStream.toString());
+
+		/*DataStream<String> iterativeStream = null;
+		// iterativeStream.setParallelism(1).rebalance();
+		List<String> list = new ArrayList<>();
+		iterativeStream = messageStream.map(new MapFunction<String, String>() {
 			@Override
-			public String getKey(String event) {
-				System.out.println("XX"+event.substring(2, 34)+"XX");
-				return event.substring(2, 34);
+			public String map(String record) throws Exception {
+				System.out.println("message" + record);
+				list.add(record);
+				return record;
 			}
 		});
-
-		
-		//keyedEdits.window(TumblingEventTimeWindows.of(Time.seconds(5)))
-		DataStream<String> processedStream =keyedEdits.reduce(new ReduceFunction<String>(){
-			boolean firstRecord = true;
-			@Override
-			public String reduce(String output, String input) throws Exception {
-				if(firstRecord){
-					firstRecord = !firstRecord;
-					return input.substring(34);
-				}
-				else{
-					System.out.println("record: "+input.substring(34));
-					return input.substring(34);	
-				}
-				
+*/
+		Iterator<String> myOutput = DataStreamUtils.collect(messageStream);
+		List<String> listOut = new ArrayList<String>();
+		while (myOutput.hasNext()) { // iter is of type Iterator<String>
+			listOut.add(myOutput.next());
+			if(false==myOutput.hasNext()) {
+				System.out.println("service call");
 			}
-		});
+		}
+		System.out.println("list" + listOut);
 
-
-
-			DataStream<String> timestampStream = messageStream.rebalance().assignTimestampsAndWatermarks(timestampAndWatermarkAssigner)
-				.assignTimestampsAndWatermarks(5);
-		// Counts Strings
-		timestampStream.timeWindowAll(Time.minutes(1)).reduce(new ReduceFunction<String>() {
-
-			@Override
-			public String reduce(String output, String input) throws Exception {
-				output = input+"\n";
-				return output;
-			}
-		});*/
-
-		//write the stream into file
+		messageStream.addSink(new FlinkKafkaProducer011<String>(ConfigConstants.BOOTSTRAP_SERVER_CONFIG,
+				ConfigConstants.BANK_TOPIC_NAME, new SimpleStringSchema()) // Serializer (provided as util)
+		);
+		// File file = BankFeedConfigurator.translate(list,
+		// "IL_DD","C:\\D\\Prudential\\newWork\\consume\\FlinkKafkaConsumer\\BankConfig_acc_Collection1.xlsx");
+		// System.out.println("absolute path" + file.getAbsolutePath());
+		// write the stream into file
 		messageStream.writeAsText(ConfigConstants.FILE_NAME);
 		env.execute();
 	}
 
-
-	public static class SimpleStringSchema implements DeserializationSchema<String>{
+	public static class SimpleStringSchema implements DeserializationSchema<String>, SerializationSchema<String> {
 		private static final long serialVersionUID = 1L;
 
 		public SimpleStringSchema() {
