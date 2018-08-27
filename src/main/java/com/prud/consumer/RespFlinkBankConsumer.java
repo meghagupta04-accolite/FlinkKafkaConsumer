@@ -49,6 +49,8 @@ public class RespFlinkBankConsumer {
 		messageStream.print();
 		
 		/*add configurator jar*/
+		
+		
 
 		messageStream.addSink(new FlinkKafkaProducer011<String>(ConfigConstants.BOOTSTRAP_SERVER_CONFIG,ConfigConstants.IL_TOPIC_NAME, new SimpleStringSchema()));
 		
